@@ -121,27 +121,47 @@ public class AddAstrBotKnowledgeBaseDocument : PSCmdlet, IDisposable
                 var task = worker.ExecuteAsync(_cts.Token);
                 _runningWork.Add((task, worker));
 
+                // 每次添加 Worker 后都排空一次输出，确保实时反馈
+                DrainAllOutput();
+
                 // 背压：达到并发上限时，等待至少一个 Worker 完成
                 if (_runningWork.Count >= ConcurrencyLimit)
+                {
                     DrainCompletedWorkers();
+                    // DrainCompletedWorkers 退出后可能有残余输出
+                    DrainAllOutput();
+                }
             }
         }
+
+        // 每次 ProcessRecord 结束前排空
+        DrainAllOutput();
     }
 
     protected override void EndProcessing()
     {
-        // 等待所有剩余 Worker 完成
-        try
+        // 进入 EndProcessing 前排空最后一次 ProcessRecord 后产生的输出
+        DrainAllOutput();
+
+        // 等待剩余 Worker + 定期 drain 输出，实现实时进度
+        while (_runningWork.Count > 0)
         {
-            Task.WaitAll(_runningWork.Select(x => x.Task).ToArray(), _cts.Token);
+            var tasks = _runningWork.Select(x => (Task)x.Task).ToArray();
+            try
+            {
+                Task.WaitAny(tasks, 500, _cts.Token);
+            }
+            catch (OperationCanceledException) { break; }
+
+            // 定期排空所有 Worker 的待输出消息
+            DrainAllOutput();
+
+            // 收集已完成的
+            CollectCompletedResults();
         }
-        catch (OperationCanceledException) { }
-        catch (AggregateException) { }
 
-        // 在 pipeline 线程上 drain 所有 Worker 的待输出消息
-        foreach (var (_, worker) in _runningWork)
-            worker.DrainOutput(_console);
-
+        // 最后一次排空
+        DrainAllOutput();
         CollectCompletedResults();
 
         // 输出结果
@@ -173,25 +193,38 @@ public class AddAstrBotKnowledgeBaseDocument : PSCmdlet, IDisposable
     // ========== 并发控制 ==========
 
     /// <summary>
-    /// 等待至少一个 Worker 完成，收集其结果，释放并发槽位。
+    /// 等待至少一个 Worker 完成，每 500ms 排空一次输出，
+    /// 实现实时进度显示。释放并发槽位后返回。
     /// </summary>
     private void DrainCompletedWorkers()
     {
         while (_runningWork.Count >= ConcurrencyLimit)
         {
-            int doneIndex = Task.WaitAny(
-                _runningWork.Select(x => x.Task).ToArray(), _cts.Token);
-            if (doneIndex < 0) break;
+            var tasks = _runningWork.Select(x => (Task)x.Task).ToArray();
+            int doneIndex = Task.WaitAny(tasks, 500, _cts.Token);
 
-            // 收集所有已完成的 Task
-            var completed = _runningWork.Where(x => x.Task.IsCompleted).ToArray();
-            foreach (var (task, worker) in completed)
+            // 定期排空所有 Worker 的待输出消息
+            DrainAllOutput();
+
+            if (doneIndex >= 0)
             {
-                _runningWork.Remove((task, worker));
-                worker.DrainOutput(_console);
-                CollectResult(task);
+                var completed = _runningWork.Where(x => x.Task.IsCompleted).ToArray();
+                foreach (var (task, worker) in completed)
+                {
+                    _runningWork.Remove((task, worker));
+                    CollectResult(task);
+                }
             }
         }
+    }
+
+    /// <summary>
+    /// 排空当前所有 Worker 的待输出消息。
+    /// </summary>
+    private void DrainAllOutput()
+    {
+        foreach (var (_, worker) in _runningWork)
+            worker.DrainOutput(_console);
     }
 
     /// <summary>
@@ -203,7 +236,6 @@ public class AddAstrBotKnowledgeBaseDocument : PSCmdlet, IDisposable
         foreach (var (task, worker) in completed)
         {
             _runningWork.Remove((task, worker));
-            worker.DrainOutput(_console);
             CollectResult(task);
         }
     }
