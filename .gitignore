@@ -1,0 +1,60 @@
+# ─── .NET / C# ───────────────────────────────────────────────
+bin/
+obj/
+*.nupkg
+*.snupkg
+*.nuget.props
+*.nuget.targets
+*.dgsl
+*.csproj.user
+*.csproj.user.*
+*.DotSettings.user
+
+# ─── Build output (from build.ps1) ──────────────────────────
+out/
+
+# ─── IDE / Editor ───────────────────────────────────────────
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.swp
+*.swo
+*~
+.DS_Store
+
+# ─── JetBrains Rider ───────────────────────────────────────
+.idea/
+*.sln.iml
+
+# ─── Visual Studio ─────────────────────────────────────────
+.vs/
+*.suo
+*.userprefs
+
+# ─── Windows / OS ──────────────────────────────────────────
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+*.cab
+*.msi
+*.msm
+*.msp
+
+# ─── NuGet packages ────────────────────────────────────────
+packages/
+*.log
+
+# ─── Testing ───────────────────────────────────────────────
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+
+# ─── Environment / Secrets ─────────────────────────────────
+.env
+*.secret
+appsettings.Local.json

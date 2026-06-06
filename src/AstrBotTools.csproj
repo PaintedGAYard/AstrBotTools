@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>AstrBotTools</AssemblyName>
+    <RootNamespace>AstrBotTools</RootNamespace>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 如果编译时 .NET 10 SDK 尚未正式发布，改为 net9.0 并调整版本号 -->
+    <PackageReference Include="Microsoft.PowerShell.SDK" Version="7.4.6" />
+  </ItemGroup>
+
+</Project>
