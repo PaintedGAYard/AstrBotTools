@@ -6,7 +6,7 @@ namespace AstrBotTools;
 [Cmdlet(VerbsCommon.Get, "AstrBotKnowledgeBaseList")]
 [Alias("Get-KBList")]
 [OutputType(typeof(PSObject))]
-public sealed class GetAstrBotKnowledgeBaseList : PSCmdlet
+public class GetAstrBotKnowledgeBaseList : PSCmdlet, IDisposable
 {
     [Parameter(Mandatory = true, Position = 0)]
     [ValidateNotNullOrEmpty]
@@ -69,13 +69,9 @@ public sealed class GetAstrBotKnowledgeBaseList : PSCmdlet
         }
     }
 
-    protected override void EndProcessing()
+    public void Dispose()
     {
         _httpClient?.Dispose();
-    }
-
-    protected override void StopProcessing()
-    {
-        _httpClient?.Dispose();
+        GC.SuppressFinalize(this);
     }
 }
