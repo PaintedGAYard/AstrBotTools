@@ -1,7 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Management.Automation;
 using System.Net.Http.Headers;
-using System.Text.Json;
 
 namespace AstrBotTools;
 
@@ -10,7 +9,7 @@ namespace AstrBotTools;
         DefaultParameterSetName = "Path")]
 [Alias("Add-KBDoc")]
 [OutputType(typeof(UploadResult))]
-public sealed class AddAstrBotKnowledgeBaseDocument : PSCmdlet, IDisposable
+public class AddAstrBotKnowledgeBaseDocument : PSCmdlet, IDisposable
 {
     [Parameter(Mandatory = true, ValueFromPipeline = true,
                ValueFromPipelineByPropertyName = true, Position = 0)]
@@ -33,7 +32,6 @@ public sealed class AddAstrBotKnowledgeBaseDocument : PSCmdlet, IDisposable
     [Parameter()] public int ChunkSize    { get; set; } = 512;
     [Parameter()] public int ChunkOverlap { get; set; } = 50;
     [Parameter()] public int BatchSize    { get; set; } = 32;
-    [Parameter()] public int TasksLimit   { get; set; } = 3;
     [Parameter()] public int MaxRetries   { get; set; } = 3;
 
     [Parameter()]
@@ -47,16 +45,16 @@ public sealed class AddAstrBotKnowledgeBaseDocument : PSCmdlet, IDisposable
     // ========== 内部状态 ==========
 
     private HttpClient _httpClient = null!;
-    private readonly Collection<Task<UploadResult?>> _pendingTasks = new();
-    private readonly Collection<string> _pendingFilePaths = new();
+    private IConsoleWriter _console = null!;
+    private readonly List<(Task<UploadResult> Task, DocumentUploadWorker Worker)> _runningWork = new();
     private readonly List<UploadResult> _allResults = new();
-    private readonly List<string> _retryQueue = new();
     private int _totalFiles;
     private CancellationTokenSource _cts = null!;
 
     protected override void BeginProcessing()
     {
         _cts = new CancellationTokenSource();
+        _console = new ConsoleCoordinator(this);
 
         var handler = new SocketsHttpHandler
         {
@@ -72,6 +70,15 @@ public sealed class AddAstrBotKnowledgeBaseDocument : PSCmdlet, IDisposable
 
     protected override void ProcessRecord()
     {
+        var uploadParams = new UploadParameters
+        {
+            KbId         = KbId,
+            ChunkSize    = ChunkSize,
+            ChunkOverlap = ChunkOverlap,
+            BatchSize    = BatchSize,
+            MaxRetries   = MaxRetries,
+        };
+
         foreach (var rawPath in Path)
         {
             Collection<PathInfo> resolvedList;
@@ -99,216 +106,127 @@ public sealed class AddAstrBotKnowledgeBaseDocument : PSCmdlet, IDisposable
             foreach (var resolved in resolvedList)
             {
                 var providerPath = resolved.ProviderPath;
-                if (System.IO.File.Exists(providerPath))
-                {
-                    _totalFiles++;
-                    EnqueueUpload(providerPath);
-                }
-                else
+                if (!System.IO.File.Exists(providerPath))
                 {
                     WriteWarning($"不是文件，跳过: {providerPath}");
+                    continue;
                 }
+
+                _totalFiles++;
+
+                var worker = new DocumentUploadWorker(
+                    _httpClient, BaseUrl, providerPath, uploadParams,
+                    UploadRetryLimit);
+
+                var task = worker.ExecuteAsync(_cts.Token);
+                _runningWork.Add((task, worker));
+
+                // 背压：达到并发上限时，等待至少一个 Worker 完成
+                if (_runningWork.Count >= UploadBatchSize)
+                    DrainCompletedWorkers();
             }
         }
     }
 
     protected override void EndProcessing()
     {
+        // 等待所有剩余 Worker 完成
         try
         {
-            FlushPendingBatch();
-
-            for (int round = 1; round <= UploadRetryLimit && _retryQueue.Count > 0; round++)
-            {
-                WriteVerbose($"第 {round}/{UploadRetryLimit} 轮重试，共 {_retryQueue.Count} 个文件");
-
-                var filesThisRound = _retryQueue.ToArray();
-                _retryQueue.Clear();
-
-                foreach (var file in filesThisRound)
-                {
-                    if (_cts.IsCancellationRequested) break;
-                    EnqueueUpload(file, isRetry: true);
-                }
-                FlushPendingBatch();
-            }
-
-            foreach (var exhaustedFile in _retryQueue)
-            {
-                _allResults.Add(new UploadResult
-                {
-                    FileName     = System.IO.Path.GetFileName(exhaustedFile),
-                    FilePath     = exhaustedFile,
-                    Status       = "Failed",
-                    ErrorMessage = $"重试 {UploadRetryLimit} 次后仍然失败",
-                    Timestamp    = DateTime.UtcNow,
-                });
-
-                WriteError(new ErrorRecord(
-                    new InvalidOperationException($"上传失败（已耗尽重试次数）: {exhaustedFile}"),
-                    "UPLOAD_EXHAUSTED",
-                    ErrorCategory.LimitsExceeded,
-                    exhaustedFile));
-            }
-
-            foreach (var result in _allResults)
-                WriteObject(result);
+            Task.WaitAll(_runningWork.Select(x => x.Task).ToArray(), _cts.Token);
         }
-        finally
+        catch (OperationCanceledException) { }
+        catch (AggregateException) { }
+
+        // 在 pipeline 线程上 drain 所有 Worker 的待输出消息
+        foreach (var (_, worker) in _runningWork)
+            worker.DrainOutput(_console);
+
+        CollectCompletedResults();
+
+        // 输出结果
+        foreach (var result in _allResults)
+            WriteObject(result);
+
+        // 汇总报告
+        int successCount = _allResults.Count(r => r.Status is "Success" or "RetrySuccess");
+        int failCount    = _allResults.Count(r => r.Status == "Failed");
+        var failedFiles  = _allResults
+            .Where(r => r.Status == "Failed")
+            .Select(r => r.FileName);
+
+        WriteVerbose(
+            $"════ 上传完成 ════ " +
+            $"总计 {_totalFiles} 个文件，成功 {successCount} 个，失败 {failCount} 个");
+
+        if (failCount > 0)
         {
-            _httpClient?.Dispose();
-            _cts?.Dispose();
+            WriteVerbose($"失败文件列表: {string.Join(", ", failedFiles)}");
         }
     }
 
     protected override void StopProcessing()
     {
         _cts?.Cancel();
-        _httpClient?.Dispose();
     }
 
-    // ========== 核心逻辑 ==========
+    // ========== 并发控制 ==========
 
-    private void EnqueueUpload(string filePath, bool isRetry = false)
+    /// <summary>
+    /// 等待至少一个 Worker 完成，收集其结果，释放并发槽位。
+    /// </summary>
+    private void DrainCompletedWorkers()
     {
-        var task = Task.Run(async () =>
+        while (_runningWork.Count >= UploadBatchSize)
         {
-            try
+            int doneIndex = Task.WaitAny(
+                _runningWork.Select(x => x.Task).ToArray(), _cts.Token);
+            if (doneIndex < 0) break;
+
+            // 收集所有已完成的 Task
+            var completed = _runningWork.Where(x => x.Task.IsCompleted).ToArray();
+            foreach (var (task, worker) in completed)
             {
-                return await UploadSingleFileAsync(filePath, _cts.Token);
+                _runningWork.Remove((task, worker));
+                worker.DrainOutput(_console);
+                CollectResult(task);
             }
-            catch (OperationCanceledException) { return null; }
-            catch (Exception ex)
-            {
-                return new UploadResult
-                {
-                    FileName     = System.IO.Path.GetFileName(filePath),
-                    FilePath     = filePath,
-                    Status       = "Failed",
-                    ErrorMessage = ex.Message,
-                    Timestamp    = DateTime.UtcNow,
-                };
-            }
-        }, _cts.Token);
-
-        _pendingTasks.Add(task);
-        _pendingFilePaths.Add(filePath);
-
-        if (_pendingTasks.Count >= UploadBatchSize)
-            FlushPendingBatch();
-    }
-
-    private void FlushPendingBatch()
-    {
-        if (_pendingTasks.Count == 0) return;
-
-        WriteVerbose($"等待 {_pendingTasks.Count} 个上传任务完成...");
-
-        try { Task.WaitAll(_pendingTasks.ToArray(), _cts.Token); }
-        catch (OperationCanceledException) { }
-        catch (AggregateException) { }
-
-        for (int i = 0; i < _pendingTasks.Count; i++)
-        {
-            var task  = _pendingTasks[i];
-            var fPath = _pendingFilePaths[i];
-
-            UploadResult? result = null;
-            if (task.IsCompletedSuccessfully)
-                result = task.Result;
-            else if (task.IsFaulted)
-            {
-                var ex = task.Exception?.InnerException ?? task.Exception;
-                result = new UploadResult
-                {
-                    FileName     = System.IO.Path.GetFileName(fPath),
-                    FilePath     = fPath,
-                    Status       = "Failed",
-                    ErrorMessage = ex?.Message ?? "未知错误",
-                    Timestamp    = DateTime.UtcNow,
-                };
-            }
-            else continue; // canceled
-
-            if (result.Status is "Success" or "RetrySuccess")
-                _allResults.Add(result);
-            else
-                _retryQueue.Add(result.FilePath);
         }
-
-        ReportProgress();
-        _pendingTasks.Clear();
-        _pendingFilePaths.Clear();
     }
 
-    private async Task<UploadResult> UploadSingleFileAsync(string filePath,
-        CancellationToken token)
+    /// <summary>
+    /// 收集当前所有已完成 Worker 的结果。
+    /// </summary>
+    private void CollectCompletedResults()
     {
-        token.ThrowIfCancellationRequested();
-
-        var fileName  = System.IO.Path.GetFileName(filePath);
-        var fileInfo  = new FileInfo(filePath);
-        var url       = $"{BaseUrl.TrimEnd('/')}/api/kb/document/upload";
-
-        byte[] fileBytes = await File.ReadAllBytesAsync(filePath, token);
-
-        using var content = new MultipartFormDataContent();
-        content.Add(new ByteArrayContent(fileBytes), "file0", fileName);
-        content.Add(new StringContent(KbId), "kb_id");
-        content.Add(new StringContent(ChunkSize   .ToString()), "chunk_size");
-        content.Add(new StringContent(ChunkOverlap.ToString()), "chunk_overlap");
-        content.Add(new StringContent(BatchSize   .ToString()), "batch_size");
-        content.Add(new StringContent(TasksLimit  .ToString()), "tasks_limit");
-        content.Add(new StringContent(MaxRetries  .ToString()), "max_retries");
-
-        var response = await _httpClient.PostAsync(url, content, token);
-        int statusCode = (int)response.StatusCode;
-        var body = await response.Content.ReadAsStringAsync(token);
-
-        string? taskId = null;
-        string? apiMessage = null;
-
-        try
+        var completed = _runningWork.Where(x => x.Task.IsCompleted).ToArray();
+        foreach (var (task, worker) in completed)
         {
-            using var doc = JsonDocument.Parse(body);
-            var root = doc.RootElement;
-            if (root.TryGetProperty("status", out var s) && s.GetString() == "ok" &&
-                root.TryGetProperty("data", out var d) &&
-                d.TryGetProperty("task_id", out var t))
-                taskId = t.GetString();
-            else if (root.TryGetProperty("message", out var m))
-                apiMessage = m.GetString();
+            _runningWork.Remove((task, worker));
+            worker.DrainOutput(_console);
+            CollectResult(task);
         }
-        catch (JsonException) { }
-
-        bool isSuccess = statusCode >= 200 && statusCode < 300 && taskId != null;
-
-        return new UploadResult
-        {
-            FileName       = fileName,
-            FilePath       = filePath,
-            FileSize       = fileInfo.Length,
-            Status         = isSuccess ? "Success" : "Failed",
-            AttemptNumber  = 1,
-            TaskId         = taskId,
-            HttpStatusCode = statusCode,
-            ErrorMessage   = isSuccess ? null : (apiMessage ?? body),
-            Timestamp      = DateTime.UtcNow,
-        };
     }
 
-    private void ReportProgress()
+    private void CollectResult(Task<UploadResult> task)
     {
-        int completed = _allResults.Count;
-        int total     = Math.Max(_totalFiles, 1);
-
-        var record = new ProgressRecord(0, "AstrBot 知识库上传",
-            $"已完成 {completed} / {total} 个文件")
+        if (task.IsCompletedSuccessfully)
         {
-            PercentComplete  = Math.Min(completed * 100 / total, 100),
-            CurrentOperation = $"待重试: {_retryQueue.Count} 个",
-        };
-        WriteProgress(record);
+            _allResults.Add(task.Result);
+        }
+        else if (task.IsFaulted)
+        {
+            // 正常情况下 Worker 内部已处理所有异常，不应走到这里
+            var ex = task.Exception?.InnerException ?? task.Exception;
+            _allResults.Add(new UploadResult
+            {
+                FileName     = "未知",
+                Status       = "Failed",
+                ErrorMessage = $"内部错误: {ex?.Message}",
+                Timestamp    = DateTime.UtcNow,
+            });
+        }
+        // cancelled: 忽略
     }
 
     public void Dispose()
