@@ -36,7 +36,7 @@ public class AddAstrBotKnowledgeBaseDocument : PSCmdlet, IDisposable
 
     [Parameter()]
     [ValidateRange(1, 100)]
-    public int UploadBatchSize { get; set; } = 10;
+    public int ConcurrencyLimit { get; set; } = 3;
 
     [Parameter()]
     [ValidateRange(0, 20)]
@@ -58,7 +58,7 @@ public class AddAstrBotKnowledgeBaseDocument : PSCmdlet, IDisposable
 
         var handler = new SocketsHttpHandler
         {
-            MaxConnectionsPerServer = UploadBatchSize,
+            MaxConnectionsPerServer = ConcurrencyLimit,
             PooledConnectionLifetime = TimeSpan.FromMinutes(5),
             PooledConnectionIdleTimeout = TimeSpan.FromSeconds(30),
         };
@@ -122,7 +122,7 @@ public class AddAstrBotKnowledgeBaseDocument : PSCmdlet, IDisposable
                 _runningWork.Add((task, worker));
 
                 // 背压：达到并发上限时，等待至少一个 Worker 完成
-                if (_runningWork.Count >= UploadBatchSize)
+                if (_runningWork.Count >= ConcurrencyLimit)
                     DrainCompletedWorkers();
             }
         }
@@ -177,7 +177,7 @@ public class AddAstrBotKnowledgeBaseDocument : PSCmdlet, IDisposable
     /// </summary>
     private void DrainCompletedWorkers()
     {
-        while (_runningWork.Count >= UploadBatchSize)
+        while (_runningWork.Count >= ConcurrencyLimit)
         {
             int doneIndex = Task.WaitAny(
                 _runningWork.Select(x => x.Task).ToArray(), _cts.Token);

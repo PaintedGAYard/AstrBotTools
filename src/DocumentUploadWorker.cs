@@ -45,7 +45,7 @@ internal sealed class DocumentUploadWorker
     }
 
     /// <summary>
-    /// 执行上传，内部包含重试循环。
+    /// 执行上传 → 成功后自动追踪向量化进度。
     /// </summary>
     public async Task<UploadResult> ExecuteAsync(CancellationToken token)
     {
@@ -66,13 +66,47 @@ internal sealed class DocumentUploadWorker
             if (lastResult.Status is "Success" or "RetrySuccess")
             {
                 Emit(w => w.WriteVerbose($"[{fileName}] ✅ 上传成功 (task_id: {lastResult.TaskId})"));
-                EmitProgressComplete(true);
+
+                // 上传成功 → 追踪向量化进度（复用同一 ActivityId）
+                string finalStatus;
+                if (lastResult.TaskId != null)
+                {
+                    // 切换进度条标题为"向量化"
+                    EmitProgressWaiting("等待向量化...");
+
+                    var tracker = new VectorizationProgressTracker(
+                        _httpClient, _baseUrl, lastResult.TaskId,
+                        fileName, _progressId, _outputQueue);
+
+                    var vecResult = await tracker.TrackAsync(token);
+
+                    bool vecOk = vecResult.Status == "Completed";
+                    finalStatus = vecOk ? "Success" : $"Vectorize{vecResult.Status}";
+
+                    return new UploadResult
+                    {
+                        FileName         = lastResult.FileName,
+                        FilePath         = lastResult.FilePath,
+                        FileSize         = lastResult.FileSize,
+                        Status           = finalStatus,
+                        AttemptNumber    = attempt,
+                        TaskId           = lastResult.TaskId,
+                        HttpStatusCode   = lastResult.HttpStatusCode,
+                        ErrorMessage     = vecOk ? null : vecResult.ErrorMessage,
+                        VectorizeStatus  = vecResult.Status,
+                        DocId            = vecResult.DocId,
+                        ChunkCount       = vecResult.ChunkCount,
+                        Timestamp        = DateTime.UtcNow,
+                    };
+                }
+
+                // task_id 为 null 时返回原始成功结果
                 return new UploadResult
                 {
                     FileName       = lastResult.FileName,
                     FilePath       = lastResult.FilePath,
                     FileSize       = lastResult.FileSize,
-                    Status         = lastResult.Status,
+                    Status         = "Success",
                     AttemptNumber  = attempt,
                     TaskId         = lastResult.TaskId,
                     HttpStatusCode = lastResult.HttpStatusCode,
@@ -176,6 +210,21 @@ internal sealed class DocumentUploadWorker
         {
             CurrentOperation = $"尝试 {attempt}/{_uploadRetryLimit}",
             PercentComplete  = attempt > 1 ? (attempt - 1) * 100 / _uploadRetryLimit : 0,
+        };
+        Emit(w => w.WriteProgress(record));
+    }
+
+    private void EmitProgressWaiting(string status)
+    {
+        var fileName = System.IO.Path.GetFileName(_filePath);
+        // 切换进度条标题到"向量化"，复用同一 ActivityId
+        var record = new ProgressRecord(
+            _progressId,
+            $"向量化: {fileName}",
+            status)
+        {
+            CurrentOperation = "排队中",
+            PercentComplete  = 0,
         };
         Emit(w => w.WriteProgress(record));
     }

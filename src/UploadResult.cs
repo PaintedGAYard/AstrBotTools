@@ -30,6 +30,15 @@ public sealed class UploadResult
     /// <summary>错误信息（失败时）</summary>
     public string? ErrorMessage { get; init; }
 
+    /// <summary>向量化处理状态：Completed / Failed / Timeout / null（上传失败时）</summary>
+    public string? VectorizeStatus { get; init; }
+
+    /// <summary>知识库中文档 ID（向量化成功后）</summary>
+    public string? DocId { get; init; }
+
+    /// <summary>向量化后的切块数量</summary>
+    public int ChunkCount { get; init; }
+
     /// <summary>完成时间</summary>
     public DateTime Timestamp { get; init; } = DateTime.UtcNow;
 }
