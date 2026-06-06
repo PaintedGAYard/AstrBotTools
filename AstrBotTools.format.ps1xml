@@ -24,10 +24,10 @@
           <TableRowEntry>
             <TableColumnItems>
               <TableColumnItem>
-                <PropertyName>name</PropertyName>
+                <PropertyName>kb_name</PropertyName>
               </TableColumnItem>
               <TableColumnItem>
-                <PropertyName>id</PropertyName>
+                <PropertyName>kb_id</PropertyName>
               </TableColumnItem>
             </TableColumnItems>
           </TableRowEntry>

@@ -37,9 +37,12 @@ public sealed class GetAstrBotKnowledgeBaseList : PSCmdlet
             using var doc = JsonDocument.Parse(body);
             var root = doc.RootElement;
 
-            if (root.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Array)
+            // ★ 修正: data.data.items 才是数组 ★
+            if (root.TryGetProperty("data", out var data) &&
+                data.TryGetProperty("items", out var items) &&
+                items.ValueKind == JsonValueKind.Array)
             {
-                foreach (var psObj in KnowledgeBaseInfo.FromJsonArray(data.EnumerateArray()))
+                foreach (var psObj in KnowledgeBaseInfo.FromJsonArray(items.EnumerateArray()))
                 {
                     WriteObject(psObj);
                 }
@@ -47,7 +50,8 @@ public sealed class GetAstrBotKnowledgeBaseList : PSCmdlet
             else
             {
                 WriteError(new ErrorRecord(
-                    new InvalidOperationException("响应中未找到 data 数组"),
+                    new InvalidOperationException(
+                        $"响应中未找到 data.items 数组: {body}"),
                     "KB_LIST_MISSING_DATA",
                     ErrorCategory.InvalidData,
                     body));
