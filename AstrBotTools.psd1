@@ -13,10 +13,7 @@
         'Get-AstrBotKnowledgeBaseList',
         'Add-AstrBotKnowledgeBaseDocument'
     )
-    AliasesToExport      = @(
-        'Get-KBList',
-        'Add-KBDoc'
-    )
+    AliasesToExport      = @()
 
     # Format file for default display
     FormatsToProcess     = @('AstrBotTools.format.ps1xml')

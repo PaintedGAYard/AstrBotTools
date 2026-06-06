@@ -1,0 +1,415 @@
+<?xml version="1.0" encoding="utf-8"?>
+<helpItems xmlns="http://msh" schema="maml">
+
+  <!-- ================================================================== -->
+  <!-- Get-AstrBotKnowledgeBaseList                                       -->
+  <!-- ================================================================== -->
+  <command:command
+      xmlns:maml="http://schemas.microsoft.com/maml/2004/10"
+      xmlns:command="http://schemas.microsoft.com/maml/dev/command/2004/10"
+      xmlns:dev="http://schemas.microsoft.com/maml/dev/2004/10">
+
+    <command:details>
+      <command:name>Get-AstrBotKnowledgeBaseList</command:name>
+      <maml:description>
+        <maml:para>Lists all knowledge bases from the AstrBot server.</maml:para>
+      </maml:description>
+      <maml:copyright>
+        <maml:para>(c) 2026. All rights reserved.</maml:para>
+      </maml:copyright>
+      <command:verb>Get</command:verb>
+      <command:noun>AstrBotKnowledgeBaseList</command:noun>
+      <dev:version></dev:version>
+    </command:details>
+
+    <maml:description>
+      <maml:para>The Get-AstrBotKnowledgeBaseList cmdlet retrieves a list of all knowledge bases configured on the AstrBot server. Each knowledge base is returned as a PSObject with properties such as kb_id, kb_name, doc_count, chunk_count, description, and timestamps.</maml:para>
+    </maml:description>
+
+    <command:syntax>
+      <command:syntaxItem>
+        <maml:name>Get-AstrBotKnowledgeBaseList</maml:name>
+        <command:parameter required="true" pipelineInput="False" position="0">
+          <maml:name>BaseUrl</maml:name>
+          <maml:description>
+            <maml:para>The base URL of the AstrBot server, e.g. http://localhost:6185.</maml:para>
+          </maml:description>
+          <command:parameterValue required="true" command:variableLength="false">String</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="true" pipelineInput="False" position="named">
+          <maml:name>AuthToken</maml:name>
+          <maml:description>
+            <maml:para>The authentication token (JWT) for the AstrBot server.</maml:para>
+          </maml:description>
+          <command:parameterValue required="true" command:variableLength="false">String</command:parameterValue>
+        </command:parameter>
+      </command:syntaxItem>
+    </command:syntax>
+
+    <command:parameters>
+      <command:parameter required="true" pipelineInput="False" position="0">
+        <maml:name>BaseUrl</maml:name>
+        <maml:description>
+          <maml:para>The base URL of the AstrBot server, including protocol and port. Example: http://localhost:6185.</maml:para>
+        </maml:description>
+        <command:parameterValue required="true" command:variableLength="false">String</command:parameterValue>
+        <dev:type>
+          <maml:name>String</maml:name>
+          <maml:uri />
+        </dev:type>
+        <dev:defaultValue>None</dev:defaultValue>
+      </command:parameter>
+      <command:parameter required="true" pipelineInput="False" position="named">
+        <maml:name>AuthToken</maml:name>
+        <maml:description>
+          <maml:para>The JWT authentication token. Obtain this from the AstrBot dashboard or API.</maml:para>
+        </maml:description>
+        <command:parameterValue required="true" command:variableLength="false">String</command:parameterValue>
+        <dev:type>
+          <maml:name>String</maml:name>
+          <maml:uri />
+        </dev:type>
+        <dev:defaultValue>None</dev:defaultValue>
+      </command:parameter>
+    </command:parameters>
+
+    <command:inputTypes>
+      <command:inputType>
+        <dev:type>
+          <maml:name>None</maml:name>
+          <maml:uri />
+          <maml:description>
+            <maml:para>This cmdlet does not accept pipeline input.</maml:para>
+          </maml:description>
+        </dev:type>
+        <maml:description>
+          <maml:para></maml:para>
+        </maml:description>
+      </command:inputType>
+    </command:inputTypes>
+
+    <command:returnValues>
+      <command:returnValue>
+        <dev:type>
+          <maml:name>System.Management.Automation.PSObject</maml:name>
+          <maml:uri />
+          <maml:description>
+            <maml:para>A PSObject representing a knowledge base, with properties such as kb_id, kb_name, doc_count, chunk_count, description, created_at, updated_at, etc.</maml:para>
+          </maml:description>
+        </dev:type>
+        <maml:description>
+          <maml:para></maml:para>
+        </maml:description>
+      </command:returnValue>
+    </command:returnValues>
+
+    <maml:alertSet>
+      <maml:alert>
+        <maml:para>The output is formatted as a table showing the name and ID by default. Use Format-List to see all properties.</maml:para>
+      </maml:alert>
+    </maml:alertSet>
+
+    <command:examples>
+      <command:example>
+        <maml:title>Example 1: List all knowledge bases</maml:title>
+        <dev:code>Get-AstrBotKnowledgeBaseList -BaseUrl http://localhost:6185 -AuthToken "your_token_here"</dev:code>
+        <dev:remarks>
+          <maml:para>Retrieves all knowledge bases from the AstrBot server at http://localhost:6185.</maml:para>
+        </dev:remarks>
+      </command:example>
+    </command:examples>
+
+    <maml:relatedLinks>
+      <maml:navigationLink>
+        <maml:linkText>Add-AstrBotKnowledgeBaseDocument</maml:linkText>
+        <maml:uri />
+      </maml:navigationLink>
+    </maml:relatedLinks>
+  </command:command>
+
+  <!-- ================================================================== -->
+  <!-- Add-AstrBotKnowledgeBaseDocument                                   -->
+  <!-- ================================================================== -->
+  <command:command
+      xmlns:maml="http://schemas.microsoft.com/maml/2004/10"
+      xmlns:command="http://schemas.microsoft.com/maml/dev/command/2004/10"
+      xmlns:dev="http://schemas.microsoft.com/maml/dev/2004/10">
+
+    <command:details>
+      <command:name>Add-AstrBotKnowledgeBaseDocument</command:name>
+      <maml:description>
+        <maml:para>Uploads one or more documents to an AstrBot knowledge base.</maml:para>
+      </maml:description>
+      <maml:copyright>
+        <maml:para>(c) 2026. All rights reserved.</maml:para>
+      </maml:copyright>
+      <command:verb>Add</command:verb>
+      <command:noun>AstrBotKnowledgeBaseDocument</command:noun>
+      <dev:version></dev:version>
+    </command:details>
+
+    <maml:description>
+      <maml:para>The Add-AstrBotKnowledgeBaseDocument cmdlet uploads files to a specified AstrBot knowledge base. It accepts files via the pipeline or as a parameter, uploads them to the server with configurable chunking and embedding parameters, and monitors the background vectorization progress until completion. Concurrency is limited to avoid overwhelming the server.</maml:para>
+    </maml:description>
+
+    <command:syntax>
+      <command:syntaxItem>
+        <maml:name>Add-AstrBotKnowledgeBaseDocument</maml:name>
+        <command:parameter required="true" pipelineInput="True" position="0">
+          <maml:name>Path</maml:name>
+          <maml:description>
+            <maml:para>File path(s) to upload. Accepts pipeline input by property name (PSPath, FullName).</maml:para>
+          </maml:description>
+          <command:parameterValue required="true" command:variableLength="true">String[]</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="true" pipelineInput="False" position="named">
+          <maml:name>BaseUrl</maml:name>
+          <maml:description>
+            <maml:para>The base URL of the AstrBot server.</maml:para>
+          </maml:description>
+          <command:parameterValue required="true" command:variableLength="false">String</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="true" pipelineInput="False" position="named">
+          <maml:name>AuthToken</maml:name>
+          <maml:description>
+            <maml:para>The JWT authentication token.</maml:para>
+          </maml:description>
+          <command:parameterValue required="true" command:variableLength="false">String</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="true" pipelineInput="False" position="named">
+          <maml:name>KbId</maml:name>
+          <maml:description>
+            <maml:para>The target knowledge base ID.</maml:para>
+          </maml:description>
+          <command:parameterValue required="true" command:variableLength="false">String</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="false" pipelineInput="False" position="named">
+          <maml:name>ChunkSize</maml:name>
+          <maml:description>
+            <maml:para>Chunk size in characters (default: 512).</maml:para>
+          </maml:description>
+          <command:parameterValue required="false" command:variableLength="false">Int32</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="false" pipelineInput="False" position="named">
+          <maml:name>ChunkOverlap</maml:name>
+          <maml:description>
+            <maml:para>Chunk overlap in characters (default: 50).</maml:para>
+          </maml:description>
+          <command:parameterValue required="false" command:variableLength="false">Int32</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="false" pipelineInput="False" position="named">
+          <maml:name>BatchSize</maml:name>
+          <maml:description>
+            <maml:para>Batch size for vectorization (default: 32).</maml:para>
+          </maml:description>
+          <command:parameterValue required="false" command:variableLength="false">Int32</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="false" pipelineInput="False" position="named">
+          <maml:name>MaxRetries</maml:name>
+          <maml:description>
+            <maml:para>Maximum retry count for server-side vectorization (default: 3).</maml:para>
+          </maml:description>
+          <command:parameterValue required="false" command:variableLength="false">Int32</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="false" pipelineInput="False" position="named">
+          <maml:name>ConcurrencyLimit</maml:name>
+          <maml:description>
+            <maml:para>Maximum number of concurrent upload+vectorization tasks (default: 3, range: 1-100).</maml:para>
+          </maml:description>
+          <command:parameterValue required="false" command:variableLength="false">Int32</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="false" pipelineInput="False" position="named">
+          <maml:name>UploadRetryLimit</maml:name>
+          <maml:description>
+            <maml:para>Maximum HTTP upload retry attempts per file (default: 3, range: 0-20).</maml:para>
+          </maml:description>
+          <command:parameterValue required="false" command:variableLength="false">Int32</command:parameterValue>
+        </command:parameter>
+      </command:syntaxItem>
+    </command:syntax>
+
+    <command:parameters>
+      <command:parameter required="true" pipelineInput="True" position="0">
+        <maml:name>Path</maml:name>
+        <maml:description>
+          <maml:para>One or more file paths to upload. Accepts pipeline input via PSPath or FullName property (compatible with Get-ChildItem and other providers).</maml:para>
+        </maml:description>
+        <command:parameterValue required="true" command:variableLength="true">String[]</command:parameterValue>
+        <dev:type>
+          <maml:name>String[]</maml:name>
+          <maml:uri />
+        </dev:type>
+        <dev:defaultValue>None</dev:defaultValue>
+      </command:parameter>
+      <command:parameter required="true" pipelineInput="False" position="named">
+        <maml:name>BaseUrl</maml:name>
+        <maml:description>
+          <maml:para>The base URL of the AstrBot server, including protocol and port.</maml:para>
+        </maml:description>
+        <command:parameterValue required="true" command:variableLength="false">String</command:parameterValue>
+        <dev:type>
+          <maml:name>String</maml:name>
+          <maml:uri />
+        </dev:type>
+        <dev:defaultValue>None</dev:defaultValue>
+      </command:parameter>
+      <command:parameter required="true" pipelineInput="False" position="named">
+        <maml:name>AuthToken</maml:name>
+        <maml:description>
+          <maml:para>The JWT authentication token for the AstrBot server.</maml:para>
+        </maml:description>
+        <command:parameterValue required="true" command:variableLength="false">String</command:parameterValue>
+        <dev:type>
+          <maml:name>String</maml:name>
+          <maml:uri />
+        </dev:type>
+        <dev:defaultValue>None</dev:defaultValue>
+      </command:parameter>
+      <command:parameter required="true" pipelineInput="False" position="named">
+        <maml:name>KbId</maml:name>
+        <maml:description>
+          <maml:para>The target knowledge base ID to upload documents to. Use Get-AstrBotKnowledgeBaseList to list available KBs.</maml:para>
+        </maml:description>
+        <command:parameterValue required="true" command:variableLength="false">String</command:parameterValue>
+        <dev:type>
+          <maml:name>String</maml:name>
+          <maml:uri />
+        </dev:type>
+        <dev:defaultValue>None</dev:defaultValue>
+      </command:parameter>
+      <command:parameter required="false" pipelineInput="False" position="named">
+        <maml:name>ChunkSize</maml:name>
+        <maml:description>
+          <maml:para>Number of characters per chunk when splitting documents (default: 512).</maml:para>
+        </maml:description>
+        <command:parameterValue required="false" command:variableLength="false">Int32</command:parameterValue>
+        <dev:type>
+          <maml:name>Int32</maml:name>
+          <maml:uri />
+        </dev:type>
+        <dev:defaultValue>512</dev:defaultValue>
+      </command:parameter>
+      <command:parameter required="false" pipelineInput="False" position="named">
+        <maml:name>ChunkOverlap</maml:name>
+        <maml:description>
+          <maml:para>Number of overlapping characters between consecutive chunks (default: 50).</maml:para>
+        </maml:description>
+        <command:parameterValue required="false" command:variableLength="false">Int32</command:parameterValue>
+        <dev:type>
+          <maml:name>Int32</maml:name>
+          <maml:uri />
+        </dev:type>
+        <dev:defaultValue>50</dev:defaultValue>
+      </command:parameter>
+      <command:parameter required="false" pipelineInput="False" position="named">
+        <maml:name>BatchSize</maml:name>
+        <maml:description>
+          <maml:para>Batch size for server-side embedding vectorization (default: 32).</maml:para>
+        </maml:description>
+        <command:parameterValue required="false" command:variableLength="false">Int32</command:parameterValue>
+        <dev:type>
+          <maml:name>Int32</maml:name>
+          <maml:uri />
+        </dev:type>
+        <dev:defaultValue>32</dev:defaultValue>
+      </command:parameter>
+      <command:parameter required="false" pipelineInput="False" position="named">
+        <maml:name>MaxRetries</maml:name>
+        <maml:description>
+          <maml:para>Maximum number of retries for server-side vectorization if it fails (default: 3).</maml:para>
+        </maml:description>
+        <command:parameterValue required="false" command:variableLength="false">Int32</command:parameterValue>
+        <dev:type>
+          <maml:name>Int32</maml:name>
+          <maml:uri />
+        </dev:type>
+        <dev:defaultValue>3</dev:defaultValue>
+      </command:parameter>
+      <command:parameter required="false" pipelineInput="False" position="named">
+        <maml:name>ConcurrencyLimit</maml:name>
+        <maml:description>
+          <maml:para>Maximum number of files to process concurrently (upload + vectorization). A lower value reduces CPU/memory load (default: 3, range: 1-100).</maml:para>
+        </maml:description>
+        <command:parameterValue required="false" command:variableLength="false">Int32</command:parameterValue>
+        <dev:type>
+          <maml:name>Int32</maml:name>
+          <maml:uri />
+        </dev:type>
+        <dev:defaultValue>3</dev:defaultValue>
+      </command:parameter>
+      <command:parameter required="false" pipelineInput="False" position="named">
+        <maml:name>UploadRetryLimit</maml:name>
+        <maml:description>
+          <maml:para>Number of times to retry the HTTP upload if it fails (default: 3, range: 0-20). Set to 0 to disable retries.</maml:para>
+        </maml:description>
+        <command:parameterValue required="false" command:variableLength="false">Int32</command:parameterValue>
+        <dev:type>
+          <maml:name>Int32</maml:name>
+          <maml:uri />
+        </dev:type>
+        <dev:defaultValue>3</dev:defaultValue>
+      </command:parameter>
+    </command:parameters>
+
+    <command:inputTypes>
+      <command:inputType>
+        <dev:type>
+          <maml:name>System.String[]</maml:name>
+          <maml:uri />
+          <maml:description>
+            <maml:para>Accepts file paths via the pipeline. Strings are resolved using the PowerShell provider (PSPath).</maml:para>
+          </maml:description>
+        </dev:type>
+        <maml:description>
+          <maml:para></maml:para>
+        </maml:description>
+      </command:inputType>
+    </command:inputTypes>
+
+    <command:returnValues>
+      <command:returnValue>
+        <dev:type>
+          <maml:name>AstrBotTools.UploadResult</maml:name>
+          <maml:uri />
+          <maml:description>
+            <maml:para>Returns an UploadResult object for each file, containing FileName, FilePath, FileSize, Status (Success/Failed/VectorizeTimeout), AttemptNumber, TaskId, DocId, ChunkCount, VectorizeStatus, HttpStatusCode, ErrorMessage, and Timestamp.</maml:para>
+          </maml:description>
+        </dev:type>
+        <maml:description>
+          <maml:para></maml:para>
+        </maml:description>
+      </command:returnValue>
+    </command:returnValues>
+
+    <maml:alertSet>
+      <maml:alert>
+        <maml:para>The cmdlet waits for both HTTP upload and server-side vectorization to complete. Use ConcurrencyLimit to control system load.</maml:para>
+      </maml:alert>
+    </maml:alertSet>
+
+    <command:examples>
+      <command:example>
+        <maml:title>Example 1: Upload a single file</maml:title>
+        <dev:code>Add-AstrBotKnowledgeBaseDocument -Path "C:\docs\report.docx" -BaseUrl http://localhost:6185 -AuthToken "token" -KbId "kb-guid"</dev:code>
+        <dev:remarks>
+          <maml:para>Uploads a single document to the specified knowledge base.</maml:para>
+        </dev:remarks>
+      </command:example>
+      <command:example>
+        <maml:title>Example 2: Upload multiple files via pipeline</maml:title>
+        <dev:code>Get-ChildItem *.md -Recurse | Add-AstrBotKnowledgeBaseDocument -BaseUrl http://localhost:6185 -AuthToken "token" -KbId "kb-guid"</dev:code>
+        <dev:remarks>
+          <maml:para>Finds all markdown files recursively and uploads them to the knowledge base with default settings.</maml:para>
+        </dev:remarks>
+      </command:example>
+    </command:examples>
+
+    <maml:relatedLinks>
+      <maml:navigationLink>
+        <maml:linkText>Get-AstrBotKnowledgeBaseList</maml:linkText>
+        <maml:uri />
+      </maml:navigationLink>
+    </maml:relatedLinks>
+  </command:command>
+
+</helpItems>

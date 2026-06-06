@@ -48,13 +48,23 @@ Copy-Item "$publishDir\AstrBotTools.dll"     -Destination $OutputDir -Force
 Copy-Item "$publishDir\*.deps.json"           -Destination $OutputDir -Force -ErrorAction SilentlyContinue
 
 # 复制 PowerShell 模块文件
-Copy-Item "$PSScriptRoot\AstrBotTools.psd1"     -Destination $OutputDir -Force
-Copy-Item "$PSScriptRoot\AstrBotTools.format.ps1xml" -Destination $OutputDir -Force
+Copy-Item "$PSScriptRoot\AstrBotTools.psd1"            -Destination $OutputDir -Force
+Copy-Item "$PSScriptRoot\AstrBotTools.format.ps1xml"    -Destination $OutputDir -Force
+
+# 复制本地化帮助文件（中英双语）
+foreach ($locale in @('en-US', 'zh-CN')) {
+    $src = "$PSScriptRoot\$locale"
+    if (Test-Path $src) {
+        $dst = "$OutputDir\$locale"
+        New-Item -ItemType Directory -Path $dst -Force | Out-Null
+        Copy-Item "$src\*" -Destination $dst -Force
+    }
+}
 
 Write-Host ""
 Write-Host "✅ 编译完成！模块位置: $OutputDir" -ForegroundColor Green
 Write-Host ""
 Write-Host "使用方式:" -ForegroundColor Cyan
 Write-Host "  Import-Module '$OutputDir\AstrBotTools.psd1' -Force" -ForegroundColor White
-Write-Host "  Get-KBList -BaseUrl http://localhost:6185 -AuthToken `"...`"" -ForegroundColor White
-Write-Host "  gci *.md | Add-KBDoc -BaseUrl ... -AuthToken ... -KbId '...'" -ForegroundColor White
+Write-Host "  Get-AstrBotKnowledgeBaseList -BaseUrl http://localhost:6185 -AuthToken `"...`"" -ForegroundColor White
+Write-Host "  gci *.md | Add-AstrBotKnowledgeBaseDocument -BaseUrl ... -AuthToken ... -KbId '...'" -ForegroundColor White

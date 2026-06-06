@@ -1,20 +1,21 @@
 namespace AstrBotTools;
 
 /// <summary>
-/// AstrBot 后台向量化处理的结果。
-/// 由 <see cref="VectorizationProgressTracker"/> 轮询 <c>GET /api/kb/document/upload/progress</c> 获得。
+/// Represents the result of AstrBot server-side vectorization.
+/// Obtained by <see cref="VectorizationProgressTracker"/> polling
+/// <c>GET /api/kb/document/upload/progress</c>.
 /// </summary>
 internal sealed class VectorizationResult
 {
-    /// <summary>向量化状态：Completed / Failed / Timeout</summary>
+    /// <summary>Vectorization status: Completed, Failed, or Timeout.</summary>
     public string Status { get; init; } = "Unknown";
 
-    /// <summary>知识库中文档 ID（仅 Completed 时有值）</summary>
+    /// <summary>Document ID in the knowledge base (only when Status is Completed).</summary>
     public string? DocId { get; init; }
 
-    /// <summary>切块数量（仅 Completed 时有值）</summary>
+    /// <summary>Number of chunks after vectorization (only when Status is Completed).</summary>
     public int ChunkCount { get; init; }
 
-    /// <summary>错误信息（Failed / Timeout 时）</summary>
+    /// <summary>Error message when Status is Failed or Timeout.</summary>
     public string? ErrorMessage { get; init; }
 }

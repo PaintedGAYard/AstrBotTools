@@ -4,10 +4,14 @@ using System.Net.Http.Headers;
 
 namespace AstrBotTools;
 
+/// <summary>
+/// Uploads one or more files to an AstrBot knowledge base and tracks server-side vectorization.
+/// Acts as a task factory: creates <see cref="DocumentUploadWorker"/> instances per file and
+/// controls concurrency via <see cref="ConcurrencyLimit"/>.
+/// </summary>
 [Cmdlet(VerbsCommon.Add, "AstrBotKnowledgeBaseDocument",
         SupportsShouldProcess = true,
         DefaultParameterSetName = "Path")]
-[Alias("Add-KBDoc")]
 [OutputType(typeof(UploadResult))]
 public class AddAstrBotKnowledgeBaseDocument : PSCmdlet, IDisposable
 {
@@ -42,7 +46,7 @@ public class AddAstrBotKnowledgeBaseDocument : PSCmdlet, IDisposable
     [ValidateRange(0, 20)]
     public int UploadRetryLimit { get; set; } = 3;
 
-    // ========== 内部状态 ==========
+    #region Internal state
 
     private HttpClient _httpClient = null!;
     private IConsoleWriter _console = null!;
@@ -50,6 +54,8 @@ public class AddAstrBotKnowledgeBaseDocument : PSCmdlet, IDisposable
     private readonly List<UploadResult> _allResults = new();
     private int _totalFiles;
     private CancellationTokenSource _cts = null!;
+
+    #endregion
 
     protected override void BeginProcessing()
     {
@@ -121,29 +127,28 @@ public class AddAstrBotKnowledgeBaseDocument : PSCmdlet, IDisposable
                 var task = worker.ExecuteAsync(_cts.Token);
                 _runningWork.Add((task, worker));
 
-                // 每次添加 Worker 后都排空一次输出，确保实时反馈
+                // Drain output after every worker creation for real-time feedback
                 DrainAllOutput();
 
-                // 背压：达到并发上限时，等待至少一个 Worker 完成
+                // Backpressure: block when concurrency limit is reached
                 if (_runningWork.Count >= ConcurrencyLimit)
                 {
                     DrainCompletedWorkers();
-                    // DrainCompletedWorkers 退出后可能有残余输出
                     DrainAllOutput();
                 }
             }
         }
 
-        // 每次 ProcessRecord 结束前排空
+        // Final drain before returning from ProcessRecord
         DrainAllOutput();
     }
 
     protected override void EndProcessing()
     {
-        // 进入 EndProcessing 前排空最后一次 ProcessRecord 后产生的输出
+        // Drain any output produced after the last ProcessRecord call
         DrainAllOutput();
 
-        // 等待剩余 Worker + 定期 drain 输出，实现实时进度
+        // Poll waiting workers every 500ms, draining output continuously
         while (_runningWork.Count > 0)
         {
             var tasks = _runningWork.Select(x => (Task)x.Task).ToArray();
@@ -153,22 +158,19 @@ public class AddAstrBotKnowledgeBaseDocument : PSCmdlet, IDisposable
             }
             catch (OperationCanceledException) { break; }
 
-            // 定期排空所有 Worker 的待输出消息
             DrainAllOutput();
-
-            // 收集已完成的
             CollectCompletedResults();
         }
 
-        // 最后一次排空
+        // Final drain after all workers are done
         DrainAllOutput();
         CollectCompletedResults();
 
-        // 输出结果
+        // Emit per-file results
         foreach (var result in _allResults)
             WriteObject(result);
 
-        // 汇总报告
+        // Summary report
         int successCount = _allResults.Count(r => r.Status is "Success" or "RetrySuccess");
         int failCount    = _allResults.Count(r => r.Status == "Failed");
         var failedFiles  = _allResults
@@ -176,12 +178,12 @@ public class AddAstrBotKnowledgeBaseDocument : PSCmdlet, IDisposable
             .Select(r => r.FileName);
 
         WriteVerbose(
-            $"════ 上传完成 ════ " +
-            $"总计 {_totalFiles} 个文件，成功 {successCount} 个，失败 {failCount} 个");
+            $"════ Upload complete ════ " +
+            $"Total: {_totalFiles}, Succeeded: {successCount}, Failed: {failCount}");
 
         if (failCount > 0)
         {
-            WriteVerbose($"失败文件列表: {string.Join(", ", failedFiles)}");
+            WriteVerbose($"Failed files: {string.Join(", ", failedFiles)}");
         }
     }
 
@@ -190,11 +192,11 @@ public class AddAstrBotKnowledgeBaseDocument : PSCmdlet, IDisposable
         _cts?.Cancel();
     }
 
-    // ========== 并发控制 ==========
+    #region Concurrency control
 
     /// <summary>
-    /// 等待至少一个 Worker 完成，每 500ms 排空一次输出，
-    /// 实现实时进度显示。释放并发槽位后返回。
+    /// Blocks until at least one worker completes, draining output every 500 ms.
+    /// Returns when the concurrency slot count drops below <see cref="ConcurrencyLimit"/>.
     /// </summary>
     private void DrainCompletedWorkers()
     {
@@ -203,7 +205,6 @@ public class AddAstrBotKnowledgeBaseDocument : PSCmdlet, IDisposable
             var tasks = _runningWork.Select(x => (Task)x.Task).ToArray();
             int doneIndex = Task.WaitAny(tasks, 500, _cts.Token);
 
-            // 定期排空所有 Worker 的待输出消息
             DrainAllOutput();
 
             if (doneIndex >= 0)
@@ -219,7 +220,7 @@ public class AddAstrBotKnowledgeBaseDocument : PSCmdlet, IDisposable
     }
 
     /// <summary>
-    /// 排空当前所有 Worker 的待输出消息。
+    /// Drains pending output from all active workers.
     /// </summary>
     private void DrainAllOutput()
     {
@@ -228,7 +229,7 @@ public class AddAstrBotKnowledgeBaseDocument : PSCmdlet, IDisposable
     }
 
     /// <summary>
-    /// 收集当前所有已完成 Worker 的结果。
+    /// Collects results from all currently completed workers.
     /// </summary>
     private void CollectCompletedResults()
     {
@@ -248,18 +249,20 @@ public class AddAstrBotKnowledgeBaseDocument : PSCmdlet, IDisposable
         }
         else if (task.IsFaulted)
         {
-            // 正常情况下 Worker 内部已处理所有异常，不应走到这里
+            // Worker catches all exceptions internally; this branch should be unreachable.
             var ex = task.Exception?.InnerException ?? task.Exception;
             _allResults.Add(new UploadResult
             {
-                FileName     = "未知",
+                FileName     = "Unknown",
                 Status       = "Failed",
-                ErrorMessage = $"内部错误: {ex?.Message}",
+                ErrorMessage = $"Internal error: {ex?.Message}",
                 Timestamp    = DateTime.UtcNow,
             });
         }
-        // cancelled: 忽略
+        // Cancelled tasks are silently ignored.
     }
+
+    #endregion
 
     public void Dispose()
     {

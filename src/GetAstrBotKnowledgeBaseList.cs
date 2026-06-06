@@ -3,8 +3,10 @@ using System.Text.Json;
 
 namespace AstrBotTools;
 
+/// <summary>
+/// Gets the list of all knowledge bases from the AstrBot server.
+/// </summary>
 [Cmdlet(VerbsCommon.Get, "AstrBotKnowledgeBaseList")]
-[Alias("Get-KBList")]
 [OutputType(typeof(PSObject))]
 public class GetAstrBotKnowledgeBaseList : PSCmdlet, IDisposable
 {
@@ -37,7 +39,6 @@ public class GetAstrBotKnowledgeBaseList : PSCmdlet, IDisposable
             using var doc = JsonDocument.Parse(body);
             var root = doc.RootElement;
 
-            // ★ 修正: data.data.items 才是数组 ★
             if (root.TryGetProperty("data", out var data) &&
                 data.TryGetProperty("items", out var items) &&
                 items.ValueKind == JsonValueKind.Array)
@@ -51,7 +52,7 @@ public class GetAstrBotKnowledgeBaseList : PSCmdlet, IDisposable
             {
                 WriteError(new ErrorRecord(
                     new InvalidOperationException(
-                        $"响应中未找到 data.items 数组: {body}"),
+                        $"Response does not contain data.items array: {body}"),
                     "KB_LIST_MISSING_DATA",
                     ErrorCategory.InvalidData,
                     body));

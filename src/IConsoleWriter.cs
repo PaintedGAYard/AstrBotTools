@@ -3,9 +3,9 @@ using System.Management.Automation;
 namespace AstrBotTools;
 
 /// <summary>
-/// 控制台输出抽象接口。
-/// Worker 通过此接口输出信息，由 ConsoleCoordinator 统一序列化，
-/// 避免多 Worker 并发写入导致输出交错。
+/// Abstraction for console output from worker threads.
+/// Implementations serialize calls via <c>lock</c> so that multiple workers
+/// running concurrently do not interleave their output on the pipeline thread.
 /// </summary>
 internal interface IConsoleWriter
 {

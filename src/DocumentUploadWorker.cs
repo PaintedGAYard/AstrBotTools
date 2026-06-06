@@ -5,9 +5,9 @@ using System.Text.Json;
 namespace AstrBotTools;
 
 /// <summary>
-/// 单个文件的上传工作器。
-/// 负责 HTTP 上传、内部重试循环、以及独立的进度条输出。
-/// 所有控制台输出通过 <see cref="DrainOutput"/> 在 pipeline 线程上排空。
+/// Uploads a single file to an AstrBot knowledge base and tracks its server-side vectorization progress.
+/// All console output is accumulated in a thread-safe queue and drained on the pipeline thread
+/// via <see cref="DrainOutput"/>.
 /// </summary>
 internal sealed class DocumentUploadWorker
 {
@@ -31,12 +31,13 @@ internal sealed class DocumentUploadWorker
         _filePath = filePath;
         _params = parameters;
         _uploadRetryLimit = uploadRetryLimit;
-        // 用文件名 Hash 作为进度条 ActivityId，确保正数
+        // Use a deterministic positive ActivityId from the file name hash
         _progressId = System.IO.Path.GetFileName(filePath).GetHashCode() & 0x7FFFFFFF;
     }
 
     /// <summary>
-    /// 在 pipeline 线程上排空所有待输出消息，并调用 IConsoleWriter 输出。
+    /// Drains all pending output actions by invoking them on the given <see cref="IConsoleWriter"/>.
+    /// Must be called from the pipeline thread.
     /// </summary>
     public void DrainOutput(IConsoleWriter console)
     {
@@ -45,7 +46,8 @@ internal sealed class DocumentUploadWorker
     }
 
     /// <summary>
-    /// 执行上传 → 成功后自动追踪向量化进度。
+    /// Executes the upload retry loop. On success, transitions to server-side
+    /// vectorization progress tracking using the same progress bar ActivityId.
     /// </summary>
     public async Task<UploadResult> ExecuteAsync(CancellationToken token)
     {
@@ -58,21 +60,19 @@ internal sealed class DocumentUploadWorker
         {
             token.ThrowIfCancellationRequested();
 
-            Emit(w => w.WriteVerbose($"[{fileName}] 上传中... (第 {attempt}/{_uploadRetryLimit} 次)"));
-            EmitProgress(attempt, "上传中...");
+            Emit(w => w.WriteVerbose($"[{fileName}] Uploading... (attempt {attempt}/{_uploadRetryLimit})"));
+            EmitProgress(attempt, "Uploading...");
 
             lastResult = await UploadOnceAsync(token);
 
             if (lastResult.Status is "Success" or "RetrySuccess")
             {
-                Emit(w => w.WriteVerbose($"[{fileName}] ✅ 上传成功 (task_id: {lastResult.TaskId})"));
+                Emit(w => w.WriteVerbose($"[{fileName}] ✅ Upload succeeded (task_id: {lastResult.TaskId})"));
 
-                // 上传成功 → 追踪向量化进度（复用同一 ActivityId）
-                string finalStatus;
                 if (lastResult.TaskId != null)
                 {
-                    // 切换进度条标题为"向量化"
-                    EmitProgressWaiting("等待向量化...");
+                    // Transition progress bar to vectorization phase
+                    EmitProgressWaiting("Waiting for vectorization...");
 
                     var tracker = new VectorizationProgressTracker(
                         _httpClient, _baseUrl, lastResult.TaskId,
@@ -81,14 +81,13 @@ internal sealed class DocumentUploadWorker
                     var vecResult = await tracker.TrackAsync(token);
 
                     bool vecOk = vecResult.Status == "Completed";
-                    finalStatus = vecOk ? "Success" : $"Vectorize{vecResult.Status}";
 
                     return new UploadResult
                     {
                         FileName         = lastResult.FileName,
                         FilePath         = lastResult.FilePath,
                         FileSize         = lastResult.FileSize,
-                        Status           = finalStatus,
+                        Status           = vecOk ? "Success" : $"Vectorize{vecResult.Status}",
                         AttemptNumber    = attempt,
                         TaskId           = lastResult.TaskId,
                         HttpStatusCode   = lastResult.HttpStatusCode,
@@ -100,7 +99,7 @@ internal sealed class DocumentUploadWorker
                     };
                 }
 
-                // task_id 为 null 时返回原始成功结果
+                // Fallback: upload returned no task_id but HTTP status was success
                 return new UploadResult
                 {
                     FileName       = lastResult.FileName,
@@ -118,12 +117,12 @@ internal sealed class DocumentUploadWorker
             if (attempt < _uploadRetryLimit)
             {
                 Emit(w => w.WriteWarning(
-                    $"[{fileName}] ❌ 第 {attempt} 次上传失败: {lastResult.ErrorMessage}，即将重试..."));
+                    $"[{fileName}] ❌ Attempt {attempt} failed: {lastResult.ErrorMessage}, retrying..."));
             }
         }
 
-        // 耗尽重试次数
-        Emit(w => w.WriteVerbose($"[{fileName}] ❌ 已耗尽 {_uploadRetryLimit} 次重试，上传失败"));
+        // All retries exhausted
+        Emit(w => w.WriteVerbose($"[{fileName}] ❌ All {_uploadRetryLimit} retries exhausted, upload failed"));
         EmitProgressComplete(false);
 
         return new UploadResult
@@ -135,7 +134,7 @@ internal sealed class DocumentUploadWorker
             AttemptNumber  = _uploadRetryLimit,
             TaskId         = lastResult?.TaskId,
             HttpStatusCode = lastResult?.HttpStatusCode,
-            ErrorMessage   = lastResult?.ErrorMessage ?? $"重试 {_uploadRetryLimit} 次后仍然失败",
+            ErrorMessage   = lastResult?.ErrorMessage ?? $"Failed after {_uploadRetryLimit} retries",
             Timestamp      = DateTime.UtcNow,
         };
     }
@@ -156,7 +155,7 @@ internal sealed class DocumentUploadWorker
         content.Add(new StringContent(_params.ChunkSize   .ToString()), "chunk_size");
         content.Add(new StringContent(_params.ChunkOverlap.ToString()), "chunk_overlap");
         content.Add(new StringContent(_params.BatchSize   .ToString()), "batch_size");
-        content.Add(new StringContent("1"), "tasks_limit");     // 硬编码 1
+        content.Add(new StringContent("1"), "tasks_limit");     // always 1 (per-file API)
         content.Add(new StringContent(_params.MaxRetries .ToString()), "max_retries");
 
         var response = await _httpClient.PostAsync(url, content, token);
@@ -187,7 +186,7 @@ internal sealed class DocumentUploadWorker
             FilePath       = _filePath,
             FileSize       = fileInfo.Length,
             Status         = isSuccess ? "Success" : "Failed",
-            AttemptNumber  = 1, // 单次尝试，最终 AttemptNumber 由 ExecuteAsync 修正
+            AttemptNumber  = 1, // single-attempt value; final count is set by ExecuteAsync
             TaskId         = taskId,
             HttpStatusCode = statusCode,
             ErrorMessage   = isSuccess ? null : (apiMessage ?? body),
@@ -195,20 +194,17 @@ internal sealed class DocumentUploadWorker
         };
     }
 
-    private void Emit(Action<IConsoleWriter> action)
-    {
-        _outputQueue.Enqueue(action);
-    }
+    private void Emit(Action<IConsoleWriter> action) => _outputQueue.Enqueue(action);
 
     private void EmitProgress(int attempt, string status)
     {
         var fileName = System.IO.Path.GetFileName(_filePath);
         var record = new ProgressRecord(
             _progressId,
-            $"上传: {fileName}",
+            $"Upload: {fileName}",
             status)
         {
-            CurrentOperation = $"尝试 {attempt}/{_uploadRetryLimit}",
+            CurrentOperation = $"Attempt {attempt}/{_uploadRetryLimit}",
             PercentComplete  = attempt > 1 ? (attempt - 1) * 100 / _uploadRetryLimit : 0,
         };
         Emit(w => w.WriteProgress(record));
@@ -217,13 +213,13 @@ internal sealed class DocumentUploadWorker
     private void EmitProgressWaiting(string status)
     {
         var fileName = System.IO.Path.GetFileName(_filePath);
-        // 切换进度条标题到"向量化"，复用同一 ActivityId
+        // Reuse same ActivityId; switch title from "Upload" to "Vectorize"
         var record = new ProgressRecord(
             _progressId,
-            $"向量化: {fileName}",
+            $"Vectorize: {fileName}",
             status)
         {
-            CurrentOperation = "排队中",
+            CurrentOperation = "Queued",
             PercentComplete  = 0,
         };
         Emit(w => w.WriteProgress(record));
@@ -234,8 +230,8 @@ internal sealed class DocumentUploadWorker
         var fileName = System.IO.Path.GetFileName(_filePath);
         var record = new ProgressRecord(
             _progressId,
-            $"上传: {fileName}",
-            success ? "✅ 完成" : "❌ 失败")
+            $"Upload: {fileName}",
+            success ? "✅ Done" : "❌ Failed")
         {
             RecordType = ProgressRecordType.Completed,
         };

@@ -1,0 +1,415 @@
+<?xml version="1.0" encoding="utf-8"?>
+<helpItems xmlns="http://msh" schema="maml">
+
+  <!-- ================================================================== -->
+  <!-- Get-AstrBotKnowledgeBaseList                                       -->
+  <!-- ================================================================== -->
+  <command:command
+      xmlns:maml="http://schemas.microsoft.com/maml/2004/10"
+      xmlns:command="http://schemas.microsoft.com/maml/dev/command/2004/10"
+      xmlns:dev="http://schemas.microsoft.com/maml/dev/2004/10">
+
+    <command:details>
+      <command:name>Get-AstrBotKnowledgeBaseList</command:name>
+      <maml:description>
+        <maml:para>获取 AstrBot 知识库列表。</maml:para>
+      </maml:description>
+      <maml:copyright>
+        <maml:para>(c) 2026. All rights reserved.</maml:para>
+      </maml:copyright>
+      <command:verb>Get</command:verb>
+      <command:noun>AstrBotKnowledgeBaseList</command:noun>
+      <dev:version></dev:version>
+    </command:details>
+
+    <maml:description>
+      <maml:para>Get-AstrBotKnowledgeBaseList cmdlet 用于获取 AstrBot 服务器上所有已配置的知识库列表。每个知识库以 PSObject 形式返回，包含 kb_id、kb_name、doc_count、chunk_count、description 以及创建/更新时间等属性。默认以表格形式显示名称和 ID，使用 Format-List 可查看全部属性。</maml:para>
+    </maml:description>
+
+    <command:syntax>
+      <command:syntaxItem>
+        <maml:name>Get-AstrBotKnowledgeBaseList</maml:name>
+        <command:parameter required="true" pipelineInput="False" position="0">
+          <maml:name>BaseUrl</maml:name>
+          <maml:description>
+            <maml:para>AstrBot 服务的基 URL。</maml:para>
+          </maml:description>
+          <command:parameterValue required="true" command:variableLength="false">String</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="true" pipelineInput="False" position="named">
+          <maml:name>AuthToken</maml:name>
+          <maml:description>
+            <maml:para>AstrBot 的身份验证令牌（JWT）。</maml:para>
+          </maml:description>
+          <command:parameterValue required="true" command:variableLength="false">String</command:parameterValue>
+        </command:parameter>
+      </command:syntaxItem>
+    </command:syntax>
+
+    <command:parameters>
+      <command:parameter required="true" pipelineInput="False" position="0">
+        <maml:name>BaseUrl</maml:name>
+        <maml:description>
+          <maml:para>AstrBot 服务的基 URL，包含协议和端口。例如：http://localhost:6185。</maml:para>
+        </maml:description>
+        <command:parameterValue required="true" command:variableLength="false">String</command:parameterValue>
+        <dev:type>
+          <maml:name>String</maml:name>
+          <maml:uri />
+        </dev:type>
+        <dev:defaultValue>无</dev:defaultValue>
+      </command:parameter>
+      <command:parameter required="true" pipelineInput="False" position="named">
+        <maml:name>AuthToken</maml:name>
+        <maml:description>
+          <maml:para>JWT 身份验证令牌。可从 AstrBot 仪表板或 API 获取。</maml:para>
+        </maml:description>
+        <command:parameterValue required="true" command:variableLength="false">String</command:parameterValue>
+        <dev:type>
+          <maml:name>String</maml:name>
+          <maml:uri />
+        </dev:type>
+        <dev:defaultValue>无</dev:defaultValue>
+      </command:parameter>
+    </command:parameters>
+
+    <command:inputTypes>
+      <command:inputType>
+        <dev:type>
+          <maml:name>None</maml:name>
+          <maml:uri />
+          <maml:description>
+            <maml:para>此 cmdlet 不接受管道输入。</maml:para>
+          </maml:description>
+        </dev:type>
+        <maml:description>
+          <maml:para></maml:para>
+        </maml:description>
+      </command:inputType>
+    </command:inputTypes>
+
+    <command:returnValues>
+      <command:returnValue>
+        <dev:type>
+          <maml:name>System.Management.Automation.PSObject</maml:name>
+          <maml:uri />
+          <maml:description>
+            <maml:para>返回表示知识库的 PSObject，包含 kb_id、kb_name、doc_count、chunk_count、description、created_at、updated_at 等属性。</maml:para>
+          </maml:description>
+        </dev:type>
+        <maml:description>
+          <maml:para></maml:para>
+        </maml:description>
+      </command:returnValue>
+    </command:returnValues>
+
+    <maml:alertSet>
+      <maml:alert>
+        <maml:para>默认以表格形式显示知识库名称和 ID。使用 Format-List 可查看所有属性。</maml:para>
+      </maml:alert>
+    </maml:alertSet>
+
+    <command:examples>
+      <command:example>
+        <maml:title>示例 1：列出所有知识库</maml:title>
+        <dev:code>Get-AstrBotKnowledgeBaseList -BaseUrl http://localhost:6185 -AuthToken "你的令牌"</dev:code>
+        <dev:remarks>
+          <maml:para>从 http://localhost:6185 上的 AstrBot 服务器获取所有知识库列表。</maml:para>
+        </dev:remarks>
+      </command:example>
+    </command:examples>
+
+    <maml:relatedLinks>
+      <maml:navigationLink>
+        <maml:linkText>Add-AstrBotKnowledgeBaseDocument</maml:linkText>
+        <maml:uri />
+      </maml:navigationLink>
+    </maml:relatedLinks>
+  </command:command>
+
+  <!-- ================================================================== -->
+  <!-- Add-AstrBotKnowledgeBaseDocument                                   -->
+  <!-- ================================================================== -->
+  <command:command
+      xmlns:maml="http://schemas.microsoft.com/maml/2004/10"
+      xmlns:command="http://schemas.microsoft.com/maml/dev/command/2004/10"
+      xmlns:dev="http://schemas.microsoft.com/maml/dev/2004/10">
+
+    <command:details>
+      <command:name>Add-AstrBotKnowledgeBaseDocument</command:name>
+      <maml:description>
+        <maml:para>上传文档到 AstrBot 知识库。</maml:para>
+      </maml:description>
+      <maml:copyright>
+        <maml:para>(c) 2026. All rights reserved.</maml:para>
+      </maml:copyright>
+      <command:verb>Add</command:verb>
+      <command:noun>AstrBotKnowledgeBaseDocument</command:noun>
+      <dev:version></dev:version>
+    </command:details>
+
+    <maml:description>
+      <maml:para>Add-AstrBotKnowledgeBaseDocument cmdlet 将文件上传到指定的 AstrBot 知识库。它接受管道输入或参数传入的文件路径，将文件上传到服务器，并自动监控后台向量化处理进度直至完成。支持可配置的切块参数和并发控制，避免对服务器造成过大压力。</maml:para>
+    </maml:description>
+
+    <command:syntax>
+      <command:syntaxItem>
+        <maml:name>Add-AstrBotKnowledgeBaseDocument</maml:name>
+        <command:parameter required="true" pipelineInput="True" position="0">
+          <maml:name>Path</maml:name>
+          <maml:description>
+            <maml:para>要上传的文件路径。通过管道接受 PSPath 或 FullName 属性传入（兼容 Get-ChildItem）。</maml:para>
+          </maml:description>
+          <command:parameterValue required="true" command:variableLength="true">String[]</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="true" pipelineInput="False" position="named">
+          <maml:name>BaseUrl</maml:name>
+          <maml:description>
+            <maml:para>AstrBot 服务的基 URL。</maml:para>
+          </maml:description>
+          <command:parameterValue required="true" command:variableLength="false">String</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="true" pipelineInput="False" position="named">
+          <maml:name>AuthToken</maml:name>
+          <maml:description>
+            <maml:para>JWT 身份验证令牌。</maml:para>
+          </maml:description>
+          <command:parameterValue required="true" command:variableLength="false">String</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="true" pipelineInput="False" position="named">
+          <maml:name>KbId</maml:name>
+          <maml:description>
+            <maml:para>目标知识库 ID。</maml:para>
+          </maml:description>
+          <command:parameterValue required="true" command:variableLength="false">String</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="false" pipelineInput="False" position="named">
+          <maml:name>ChunkSize</maml:name>
+          <maml:description>
+            <maml:para>切块大小，以字符为单位（默认：512）。</maml:para>
+          </maml:description>
+          <command:parameterValue required="false" command:variableLength="false">Int32</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="false" pipelineInput="False" position="named">
+          <maml:name>ChunkOverlap</maml:name>
+          <maml:description>
+            <maml:para>相邻切块之间的重叠字符数（默认：50）。</maml:para>
+          </maml:description>
+          <command:parameterValue required="false" command:variableLength="false">Int32</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="false" pipelineInput="False" position="named">
+          <maml:name>BatchSize</maml:name>
+          <maml:description>
+            <maml:para>服务端向量化处理的批大小（默认：32）。</maml:para>
+          </maml:description>
+          <command:parameterValue required="false" command:variableLength="false">Int32</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="false" pipelineInput="False" position="named">
+          <maml:name>MaxRetries</maml:name>
+          <maml:description>
+            <maml:para>服务端向量化失败时的最大重试次数（默认：3）。</maml:para>
+          </maml:description>
+          <command:parameterValue required="false" command:variableLength="false">Int32</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="false" pipelineInput="False" position="named">
+          <maml:name>ConcurrencyLimit</maml:name>
+          <maml:description>
+            <maml:para>同时处理的最大文件数（上传+向量化）。较低的值可减少 CPU/内存负载（默认：3，范围：1-100）。</maml:para>
+          </maml:description>
+          <command:parameterValue required="false" command:variableLength="false">Int32</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="false" pipelineInput="False" position="named">
+          <maml:name>UploadRetryLimit</maml:name>
+          <maml:description>
+            <maml:para>HTTP 上传失败后的重试次数（默认：3，范围：0-20）。设为 0 可禁用重试。</maml:para>
+          </maml:description>
+          <command:parameterValue required="false" command:variableLength="false">Int32</command:parameterValue>
+        </command:parameter>
+      </command:syntaxItem>
+    </command:syntax>
+
+    <command:parameters>
+      <command:parameter required="true" pipelineInput="True" position="0">
+        <maml:name>Path</maml:name>
+        <maml:description>
+          <maml:para>要上传的文件路径。可通过管道按属性名（PSPath、FullName）接受输入，兼容 Get-ChildItem 等 cmdlet。</maml:para>
+        </maml:description>
+        <command:parameterValue required="true" command:variableLength="true">String[]</command:parameterValue>
+        <dev:type>
+          <maml:name>String[]</maml:name>
+          <maml:uri />
+        </dev:type>
+        <dev:defaultValue>无</dev:defaultValue>
+      </command:parameter>
+      <command:parameter required="true" pipelineInput="False" position="named">
+        <maml:name>BaseUrl</maml:name>
+        <maml:description>
+          <maml:para>AstrBot 服务的基 URL，包含协议和端口。</maml:para>
+        </maml:description>
+        <command:parameterValue required="true" command:variableLength="false">String</command:parameterValue>
+        <dev:type>
+          <maml:name>String</maml:name>
+          <maml:uri />
+        </dev:type>
+        <dev:defaultValue>无</dev:defaultValue>
+      </command:parameter>
+      <command:parameter required="true" pipelineInput="False" position="named">
+        <maml:name>AuthToken</maml:name>
+        <maml:description>
+          <maml:para>AstrBot 服务器的 JWT 身份验证令牌。</maml:para>
+        </maml:description>
+        <command:parameterValue required="true" command:variableLength="false">String</command:parameterValue>
+        <dev:type>
+          <maml:name>String</maml:name>
+          <maml:uri />
+        </dev:type>
+        <dev:defaultValue>无</dev:defaultValue>
+      </command:parameter>
+      <command:parameter required="true" pipelineInput="False" position="named">
+        <maml:name>KbId</maml:name>
+        <maml:description>
+          <maml:para>目标知识库的 ID。使用 Get-AstrBotKnowledgeBaseList 可查看可用的知识库。</maml:para>
+        </maml:description>
+        <command:parameterValue required="true" command:variableLength="false">String</command:parameterValue>
+        <dev:type>
+          <maml:name>String</maml:name>
+          <maml:uri />
+        </dev:type>
+        <dev:defaultValue>无</dev:defaultValue>
+      </command:parameter>
+      <command:parameter required="false" pipelineInput="False" position="named">
+        <maml:name>ChunkSize</maml:name>
+        <maml:description>
+          <maml:para>文档切块时每块的字符数（默认：512）。</maml:para>
+        </maml:description>
+        <command:parameterValue required="false" command:variableLength="false">Int32</command:parameterValue>
+        <dev:type>
+          <maml:name>Int32</maml:name>
+          <maml:uri />
+        </dev:type>
+        <dev:defaultValue>512</dev:defaultValue>
+      </command:parameter>
+      <command:parameter required="false" pipelineInput="False" position="named">
+        <maml:name>ChunkOverlap</maml:name>
+        <maml:description>
+          <maml:para>相邻切块之间的重叠字符数，用于保持上下文连贯（默认：50）。</maml:para>
+        </maml:description>
+        <command:parameterValue required="false" command:variableLength="false">Int32</command:parameterValue>
+        <dev:type>
+          <maml:name>Int32</maml:name>
+          <maml:uri />
+        </dev:type>
+        <dev:defaultValue>50</dev:defaultValue>
+      </command:parameter>
+      <command:parameter required="false" pipelineInput="False" position="named">
+        <maml:name>BatchSize</maml:name>
+        <maml:description>
+          <maml:para>服务端向量化嵌入处理的批大小（默认：32）。</maml:para>
+        </maml:description>
+        <command:parameterValue required="false" command:variableLength="false">Int32</command:parameterValue>
+        <dev:type>
+          <maml:name>Int32</maml:name>
+          <maml:uri />
+        </dev:type>
+        <dev:defaultValue>32</dev:defaultValue>
+      </command:parameter>
+      <command:parameter required="false" pipelineInput="False" position="named">
+        <maml:name>MaxRetries</maml:name>
+        <maml:description>
+          <maml:para>服务端向量化失败时的最大重试次数（默认：3）。</maml:para>
+        </maml:description>
+        <command:parameterValue required="false" command:variableLength="false">Int32</command:parameterValue>
+        <dev:type>
+          <maml:name>Int32</maml:name>
+          <maml:uri />
+        </dev:type>
+        <dev:defaultValue>3</dev:defaultValue>
+      </command:parameter>
+      <command:parameter required="false" pipelineInput="False" position="named">
+        <maml:name>ConcurrencyLimit</maml:name>
+        <maml:description>
+          <maml:para>同时处理的文件数量上限（上传+向量化全生命周期）。较低的值可以减少 CPU 和内存负载（默认：3，范围：1-100）。</maml:para>
+        </maml:description>
+        <command:parameterValue required="false" command:variableLength="false">Int32</command:parameterValue>
+        <dev:type>
+          <maml:name>Int32</maml:name>
+          <maml:uri />
+        </dev:type>
+        <dev:defaultValue>3</dev:defaultValue>
+      </command:parameter>
+      <command:parameter required="false" pipelineInput="False" position="named">
+        <maml:name>UploadRetryLimit</maml:name>
+        <maml:description>
+          <maml:para>HTTP 上传失败时的重试次数（默认：3，范围：0-20）。设为 0 表示不重试。</maml:para>
+        </maml:description>
+        <command:parameterValue required="false" command:variableLength="false">Int32</command:parameterValue>
+        <dev:type>
+          <maml:name>Int32</maml:name>
+          <maml:uri />
+        </dev:type>
+        <dev:defaultValue>3</dev:defaultValue>
+      </command:parameter>
+    </command:parameters>
+
+    <command:inputTypes>
+      <command:inputType>
+        <dev:type>
+          <maml:name>System.String[]</maml:name>
+          <maml:uri />
+          <maml:description>
+            <maml:para>通过管道接受文件路径。字符串会通过 PowerShell 提供程序（PSPath）解析。</maml:para>
+          </maml:description>
+        </dev:type>
+        <maml:description>
+          <maml:para></maml:para>
+        </maml:description>
+      </command:inputType>
+    </command:inputTypes>
+
+    <command:returnValues>
+      <command:returnValue>
+        <dev:type>
+          <maml:name>AstrBotTools.UploadResult</maml:name>
+          <maml:uri />
+          <maml:description>
+            <maml:para>每个文件返回一个 UploadResult 对象，包含 FileName、FilePath、FileSize、Status（Success/Failed/VectorizeTimeout）、AttemptNumber、TaskId、DocId、ChunkCount、VectorizeStatus、HttpStatusCode、ErrorMessage 和 Timestamp 属性。</maml:para>
+          </maml:description>
+        </dev:type>
+        <maml:description>
+          <maml:para></maml:para>
+        </maml:description>
+      </command:returnValue>
+    </command:returnValues>
+
+    <maml:alertSet>
+      <maml:alert>
+        <maml:para>该 cmdlet 会等待 HTTP 上传和服务端向量化处理全部完成后才返回。使用 ConcurrencyLimit 参数控制系统负载。</maml:para>
+      </maml:alert>
+    </maml:alertSet>
+
+    <command:examples>
+      <command:example>
+        <maml:title>示例 1：上传单个文件</maml:title>
+        <dev:code>Add-AstrBotKnowledgeBaseDocument -Path "C:\docs\报告.docx" -BaseUrl http://localhost:6185 -AuthToken "令牌" -KbId "知识库ID"</dev:code>
+        <dev:remarks>
+          <maml:para>将单个文档上传到指定的知识库。</maml:para>
+        </dev:remarks>
+      </command:example>
+      <command:example>
+        <maml:title>示例 2：通过管道批量上传</maml:title>
+        <dev:code>Get-ChildItem *.md -Recurse | Add-AstrBotKnowledgeBaseDocument -BaseUrl http://localhost:6185 -AuthToken "令牌" -KbId "知识库ID"</dev:code>
+        <dev:remarks>
+          <maml:para>递归查找所有 Markdown 文件并使用默认设置上传到知识库。</maml:para>
+        </dev:remarks>
+      </command:example>
+    </command:examples>
+
+    <maml:relatedLinks>
+      <maml:navigationLink>
+        <maml:linkText>Get-AstrBotKnowledgeBaseList</maml:linkText>
+        <maml:uri />
+      </maml:navigationLink>
+    </maml:relatedLinks>
+  </command:command>
+
+</helpItems>

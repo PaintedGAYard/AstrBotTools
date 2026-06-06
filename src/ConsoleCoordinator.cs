@@ -3,8 +3,8 @@ using System.Management.Automation;
 namespace AstrBotTools;
 
 /// <summary>
-/// 控制台输出协调器。
-/// 通过 lock 序列化所有 Write* 调用，确保多 Worker 并发时输出不交错。
+/// Serializes <c>Write*</c> calls from multiple workers via <c>lock</c>,
+/// ensuring console output is not interleaved on the single pipeline thread.
 /// </summary>
 internal sealed class ConsoleCoordinator : IConsoleWriter
 {
@@ -18,25 +18,16 @@ internal sealed class ConsoleCoordinator : IConsoleWriter
 
     public void WriteVerbose(string message)
     {
-        lock (_lock)
-        {
-            _cmdlet.WriteVerbose(message);
-        }
+        lock (_lock) { _cmdlet.WriteVerbose(message); }
     }
 
     public void WriteWarning(string message)
     {
-        lock (_lock)
-        {
-            _cmdlet.WriteWarning(message);
-        }
+        lock (_lock) { _cmdlet.WriteWarning(message); }
     }
 
     public void WriteProgress(ProgressRecord record)
     {
-        lock (_lock)
-        {
-            _cmdlet.WriteProgress(record);
-        }
+        lock (_lock) { _cmdlet.WriteProgress(record); }
     }
 }

@@ -3,25 +3,24 @@ using System.Management.Automation;
 namespace AstrBotTools;
 
 /// <summary>
-/// 知识库信息输出类。
-/// 所有 JSON 属性被展开为 PSObject 的属性，
-/// 通过 PSTypeName 绑定 format.ps1xml 控制默认显示列。
+/// Converts JSON knowledge-base entries from the AstrBot API into <see cref="PSObject"/> instances.
+/// Each PSObject is tagged with <c>AstrBotTools.KnowledgeBaseInfo</c> as its type name,
+/// matching the formatting rules defined in <c>AstrBotTools.format.ps1xml</c>.
 /// </summary>
 public static class KnowledgeBaseInfo
 {
     /// <summary>
-    /// 将 JSON 数组中的每个元素转换为 PSObject，
-    /// 所有字段展平为属性，并打上类型标记用于格式化。
+    /// Converts each JSON element in the array to a <see cref="PSObject"/> with all
+    /// JSON properties flattened as <see cref="PSNoteProperty"/> entries.
     /// </summary>
-    /// <param name="elements">JSON 数组中的元素枚举</param>
-    /// <returns>PSObject 枚举</returns>
+    /// <param name="elements">Enumeration of JSON elements from the API response.</param>
+    /// <returns>A sequence of PSObjects suitable for <c>WriteObject</c>.</returns>
     public static IEnumerable<PSObject> FromJsonArray(
         IEnumerable<System.Text.Json.JsonElement> elements)
     {
         foreach (var elem in elements)
         {
             var psObj = new PSObject();
-            // 插入类型名称，用于 format.ps1xml 匹配
             psObj.TypeNames.Insert(0, "AstrBotTools.KnowledgeBaseInfo");
 
             foreach (var prop in elem.EnumerateObject())
