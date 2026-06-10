@@ -21,7 +21,7 @@ internal sealed class VectorizationProgressTracker
     private readonly ConcurrentQueue<Action<IConsoleWriter>> _outputQueue;
 
     private const int PollIntervalMs = 2_000;
-    private static readonly TimeSpan GlobalTimeout = TimeSpan.FromMinutes(10);
+    private readonly TimeSpan _globalTimeout;
     private static readonly TimeSpan PerRequestTimeout = TimeSpan.FromSeconds(30);
 
     public VectorizationProgressTracker(
@@ -30,7 +30,8 @@ internal sealed class VectorizationProgressTracker
         string taskId,
         string fileName,
         int progressId,
-        ConcurrentQueue<Action<IConsoleWriter>> outputQueue)
+        ConcurrentQueue<Action<IConsoleWriter>> outputQueue,
+        TimeSpan vectorizationTimeout)
     {
         _httpClient = httpClient;
         _baseUrl = baseUrl.TrimEnd('/');
@@ -38,16 +39,22 @@ internal sealed class VectorizationProgressTracker
         _fileName = fileName;
         _progressId = progressId;
         _outputQueue = outputQueue;
+        _globalTimeout = vectorizationTimeout;
     }
 
     /// <summary>
     /// Starts polling the progress endpoint and returns when vectorization completes,
-    /// fails, or the global timeout (10 min) is reached.
+    /// fails, or the global timeout is reached. If <see cref="_globalTimeout"/>
+    /// is <see cref="TimeSpan.Zero"/> or negative, no timeout is applied (runs until
+    /// completion or user cancellation).
     /// </summary>
     public async Task<VectorizationResult> TrackAsync(CancellationToken token)
     {
         var cts = CancellationTokenSource.CreateLinkedTokenSource(token);
-        cts.CancelAfter(GlobalTimeout);
+
+        bool hasTimeout = _globalTimeout > TimeSpan.Zero;
+        if (hasTimeout)
+            cts.CancelAfter(_globalTimeout);
 
         try
         {
@@ -56,12 +63,12 @@ internal sealed class VectorizationProgressTracker
         catch (OperationCanceledException) when (!token.IsCancellationRequested)
         {
             Emit(w => w.WriteWarning(
-                $"[{_fileName}] ⏱ Vectorization timed out ({GlobalTimeout.TotalMinutes} min)"));
+                $"[{_fileName}] ⏱ Vectorization timed out ({_globalTimeout.TotalMinutes} min)"));
             EmitProgressComplete(false, "⏱ Timed out");
             return new VectorizationResult
             {
                 Status       = "Timeout",
-                ErrorMessage = $"Vectorization timed out after {GlobalTimeout.TotalMinutes} minutes",
+                ErrorMessage = $"Vectorization timed out after {_globalTimeout.TotalMinutes} minutes",
             };
         }
     }

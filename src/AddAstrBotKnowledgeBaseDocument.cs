@@ -11,7 +11,7 @@ namespace AstrBotTools;
 /// </summary>
 [Cmdlet(VerbsCommon.Add, "AstrBotKnowledgeBaseDocument",
         SupportsShouldProcess = true,
-        DefaultParameterSetName = "Path")]
+        DefaultParameterSetName = "Timeout")]
 [OutputType(typeof(UploadResult))]
 public class AddAstrBotKnowledgeBaseDocument : PSCmdlet, IDisposable
 {
@@ -46,6 +46,25 @@ public class AddAstrBotKnowledgeBaseDocument : PSCmdlet, IDisposable
     [ValidateRange(0, 20)]
     public int UploadRetryLimit { get; set; } = 3;
 
+    /// <summary>
+    /// Maximum time to wait for server-side vectorization to complete.
+    /// Default is 10 minutes. Set to <c>00:00:00</c> or a negative value for no timeout
+    /// (the cmdlet will wait indefinitely until vectorization finishes or the user
+    /// interrupts with Ctrl+C).
+    /// Mutually exclusive with <see cref="VectorizationTimeoutSeconds"/>.
+    /// </summary>
+    [Parameter(ParameterSetName = "Timeout")]
+    public TimeSpan VectorizationTimeout { get; set; } = TimeSpan.FromMinutes(10);
+
+    /// <summary>
+    /// Convenience alternative to <see cref="VectorizationTimeout"/> that accepts
+    /// a plain number of seconds (including fractional, e.g. <c>123.3</c>).
+    /// Mutually exclusive with <see cref="VectorizationTimeout"/>.
+    /// Set to <c>0</c> or negative for no timeout.
+    /// </summary>
+    [Parameter(ParameterSetName = "TimeoutSeconds")]
+    public double VectorizationTimeoutSeconds { get; set; } = 0;
+
     #region Internal state
 
     private HttpClient _httpClient = null!;
@@ -59,6 +78,14 @@ public class AddAstrBotKnowledgeBaseDocument : PSCmdlet, IDisposable
 
     protected override void BeginProcessing()
     {
+        // Resolve timeout from whichever parameter set was used
+        if (ParameterSetName == "TimeoutSeconds")
+        {
+            VectorizationTimeout = VectorizationTimeoutSeconds > 0
+                ? TimeSpan.FromSeconds(VectorizationTimeoutSeconds)
+                : TimeSpan.Zero; // 0 or negative → no timeout
+        }
+
         _cts = new CancellationTokenSource();
         _console = new ConsoleCoordinator(this);
 
@@ -122,7 +149,7 @@ public class AddAstrBotKnowledgeBaseDocument : PSCmdlet, IDisposable
 
                 var worker = new DocumentUploadWorker(
                     _httpClient, BaseUrl, providerPath, uploadParams,
-                    UploadRetryLimit);
+                    UploadRetryLimit, VectorizationTimeout);
 
                 var task = worker.ExecuteAsync(_cts.Token);
                 _runningWork.Add((task, worker));

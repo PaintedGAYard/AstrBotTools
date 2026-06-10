@@ -15,6 +15,7 @@ internal sealed class DocumentUploadWorker
     private readonly string _filePath;
     private readonly UploadParameters _params;
     private readonly int _uploadRetryLimit;
+    private readonly TimeSpan _vectorizationTimeout;
     private readonly int _progressId;
     private readonly string _baseUrl;
     private readonly ConcurrentQueue<Action<IConsoleWriter>> _outputQueue = new();
@@ -24,13 +25,15 @@ internal sealed class DocumentUploadWorker
         string baseUrl,
         string filePath,
         UploadParameters parameters,
-        int uploadRetryLimit)
+        int uploadRetryLimit,
+        TimeSpan vectorizationTimeout)
     {
         _httpClient = httpClient;
         _baseUrl = baseUrl.TrimEnd('/');
         _filePath = filePath;
         _params = parameters;
         _uploadRetryLimit = uploadRetryLimit;
+        _vectorizationTimeout = vectorizationTimeout;
         // Use a deterministic positive ActivityId from the file name hash
         _progressId = System.IO.Path.GetFileName(filePath).GetHashCode() & 0x7FFFFFFF;
     }
@@ -76,7 +79,7 @@ internal sealed class DocumentUploadWorker
 
                     var tracker = new VectorizationProgressTracker(
                         _httpClient, _baseUrl, lastResult.TaskId,
-                        fileName, _progressId, _outputQueue);
+                        fileName, _progressId, _outputQueue, _vectorizationTimeout);
 
                     var vecResult = await tracker.TrackAsync(token);
 
